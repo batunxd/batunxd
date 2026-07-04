@@ -1,11 +1,11 @@
 from flask import Flask, render_template, request, send_file
 import yt_dlp
 import os
+import shutil
 
 app = Flask(__name__)
 app.secret_key = 'medyaindirici_gizli_anahtar'
 
-# Vercel üzerinde sadece /tmp klasörüne yazma (indirme) izni vardır
 DOWNLOAD_FOLDER = '/tmp' 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -18,8 +18,10 @@ def index():
             return "Lütfen bir link girin!", 400
 
         try:
-            # Vercel'in salt okunur hatası vermemesi için direkt proje klasöründeki ismi veriyoruz
-            cookies_file = 'cookies.txt'
+            # Vercel'in salt okunur hatasını aşmak için:
+            # Proje klasöründeki kilitli cookies.txt dosyasını, izinleri açık olan /tmp klasörüne kopyalıyoruz.
+            src_cookies = 'cookies.txt'
+            tmp_cookies = os.path.join(DOWNLOAD_FOLDER, 'cookies.txt')
             
             ydl_opts = {
                 'outtmpl': os.path.join(DOWNLOAD_FOLDER, '%(title)s.%(ext)s'),
@@ -29,9 +31,10 @@ def index():
                 },
             }
 
-            # Dosya varsa tam yolunu hesaplamadan direkt yt-dlp'ye teslim ediyoruz
-            if os.path.exists(cookies_file):
-                ydl_opts['cookiefile'] = cookies_file
+            if os.path.exists(src_cookies):
+                # Dosyayı /tmp altına kopyala (Zorunlu izin bypass yöntemi)
+                shutil.copy2(src_cookies, tmp_cookies)
+                ydl_opts['cookiefile'] = tmp_cookies
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
@@ -56,5 +59,4 @@ def index():
 
     return render_template('index.html')
 
-# Vercel için gerekli handler tanımı
 handler = app
