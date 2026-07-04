@@ -20,37 +20,39 @@ def index():
             cookies_path = os.path.abspath('cookies.txt')
             
             ydl_opts = {
+                # Sunucuda dosya adının uzantısının youtube ne verirse öyle kalmasını sağlıyoruz
                 'outtmpl': os.path.join(DOWNLOAD_FOLDER, '%(title)s.%(ext)s'),
                 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                # Sunucuda harici birleştirici (ffmpeg) çağrılmasını tamamen devre dışı bırakıyoruz
-                'extract_flat': False,
             }
 
             if os.path.exists(cookies_path):
                 ydl_opts['cookiefile'] = cookies_path
 
             if format_type == 'mp3':
-                # ffmpeg olmadan sunucunun dönüştürme yapması imkansız olduğundan, 
-                # doğrudan YouTube'un tek parça halinde hazır sunduğu en iyi ses dosyasını çekiyoruz.
-                ydl_opts.update({
-                    'format': 'bestaudio',
-                })
+                # ffmpeg olmadan en sorunsuz çalışan hazır ses formatı
+                ydl_opts['format'] = 'bestaudio/best'
             else:
-                # 'best' veya 'mp4' uzantılı, içinde hem ses hem görüntü barındıran 
-                # tek parça hazır ham formatı zorunlu kılıyoruz.
-                ydl_opts.update({
-                    'format': 'best[ext=mp4]/best',
-                })
+                # ffmpeg olmadan video+ses barındıran en yaygın mp4 veya benzeri hazır format
+                ydl_opts['format'] = 'ext=mp4/best'
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
                 filename = ydl.prepare_filename(info)
                 
-                # İndirilen dosya mp3 formatı seçildiyse uzantıyı sunucu tarafında yeniden adlandırıyoruz
-                if format_type == 'mp3' and not filename.endswith('.mp3'):
+                # Gerçekte inen dosya uzantısını kontrol edip düzeltme yapıyoruz
+                if not os.path.exists(filename):
+                    # Bazı durumlarda yt-dlp uzantıyı otomatik değiştirebilir, kontrol edelim:
                     base, _ = os.path.splitext(filename)
-                    os.rename(filename, base + '.mp3')
-                    filename = base + '.mp3'
+                    for ext in ['.mp4', '.m4a', '.webm', '.3gp']:
+                        if os.path.exists(base + ext):
+                            filename = base + ext
+                            break
+
+                # Eğer kullanıcı mp3 istedi ise sunucu tarafında ismi mp3 yapıp gönderelim
+                if format_type == 'mp3' and not filename.endswith('.mp3'):
+                    new_filename = os.path.splitext(filename)[0] + '.mp3'
+                    os.rename(filename, new_filename)
+                    filename = new_filename
 
             return send_file(filename, as_attachment=True)
 
