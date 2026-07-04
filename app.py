@@ -17,10 +17,18 @@ def index():
             return "Lütfen bir link girin!", 400
 
         try:
+            # Çerez dosyasının tam yolunu buluyoruz
+            cookies_path = os.path.abspath('cookies.txt')
+            
             ydl_opts = {
                 'outtmpl': os.path.join(DOWNLOAD_FOLDER, '%(title)s.%(ext)s'),
-                'cookiefile': 'cookies.txt' if os.path.exists('cookies.txt') else None,
+                # Bot engelini aşmak için gerçek tarayıcı kimliği
+                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             }
+
+            # Eğer cookies.txt varsa ayarlara kesin olarak ekle
+            if os.path.exists(cookies_path):
+                ydl_opts['cookiefile'] = cookies_path
 
             if format_type == 'mp3':
                 ydl_opts.update({
