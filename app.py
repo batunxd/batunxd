@@ -5,6 +5,7 @@ import os
 app = Flask(__name__)
 app.secret_key = 'medyaindirici_gizli_anahtar'
 
+# Vercel üzerinde sadece /tmp klasörüne yazma (indirme) izni vardır
 DOWNLOAD_FOLDER = '/tmp' 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -17,9 +18,9 @@ def index():
             return "Lütfen bir link girin!", 400
 
         try:
-            cookies_path = os.path.abspath('cookies.txt')
+            # Vercel'in salt okunur hatası vermemesi için direkt proje klasöründeki ismi veriyoruz
+            cookies_file = 'cookies.txt'
             
-            # Vercel üzerinde en hafif şekilde çalışacak stabil yt-dlp ayarları
             ydl_opts = {
                 'outtmpl': os.path.join(DOWNLOAD_FOLDER, '%(title)s.%(ext)s'),
                 'format': 'ba/b' if format_type == 'mp3' else 'best',
@@ -28,8 +29,9 @@ def index():
                 },
             }
 
-            if os.path.exists(cookies_path):
-                ydl_opts['cookiefile'] = cookies_path
+            # Dosya varsa tam yolunu hesaplamadan direkt yt-dlp'ye teslim ediyoruz
+            if os.path.exists(cookies_file):
+                ydl_opts['cookiefile'] = cookies_file
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
@@ -54,5 +56,5 @@ def index():
 
     return render_template('index.html')
 
-# Vercel'in projeyi tanıması için bu satır kritik önem taşıyor
+# Vercel için gerekli handler tanımı
 handler = app
