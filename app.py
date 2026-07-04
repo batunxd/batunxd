@@ -20,35 +20,35 @@ def index():
             cookies_path = os.path.abspath('cookies.txt')
             
             ydl_opts = {
-                # Sunucuda dosya adının uzantısının youtube ne verirse öyle kalmasını sağlıyoruz
                 'outtmpl': os.path.join(DOWNLOAD_FOLDER, '%(title)s.%(ext)s'),
-                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                # YouTube'un sunucu IP'lerini engellemesini zorlaştıran ek parametreler:
+                'http_headers': {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.5',
+                    'Sec-Fetch-Mode': 'navigate',
+                },
             }
 
             if os.path.exists(cookies_path):
                 ydl_opts['cookiefile'] = cookies_path
 
             if format_type == 'mp3':
-                # ffmpeg olmadan en sorunsuz çalışan hazır ses formatı
                 ydl_opts['format'] = 'bestaudio/best'
             else:
-                # ffmpeg olmadan video+ses barındıran en yaygın mp4 veya benzeri hazır format
                 ydl_opts['format'] = 'ext=mp4/best'
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
                 filename = ydl.prepare_filename(info)
                 
-                # Gerçekte inen dosya uzantısını kontrol edip düzeltme yapıyoruz
                 if not os.path.exists(filename):
-                    # Bazı durumlarda yt-dlp uzantıyı otomatik değiştirebilir, kontrol edelim:
                     base, _ = os.path.splitext(filename)
                     for ext in ['.mp4', '.m4a', '.webm', '.3gp']:
                         if os.path.exists(base + ext):
                             filename = base + ext
                             break
 
-                # Eğer kullanıcı mp3 istedi ise sunucu tarafında ismi mp3 yapıp gönderelim
                 if format_type == 'mp3' and not filename.endswith('.mp3'):
                     new_filename = os.path.splitext(filename)[0] + '.mp3'
                     os.rename(filename, new_filename)
