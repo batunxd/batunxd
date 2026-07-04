@@ -5,7 +5,7 @@ import os
 app = Flask(__name__)
 app.secret_key = 'medyaindirici_gizli_anahtar'
 
-DOWNLOAD_FOLDER = '/tmp' # İnternet sunucularında yazma izni olan geçici klasör
+DOWNLOAD_FOLDER = '/tmp' 
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -19,29 +19,17 @@ def index():
         try:
             cookies_path = os.path.abspath('cookies.txt')
             
+            # Vercel üzerinde en hafif şekilde çalışacak stabil yt-dlp ayarları
             ydl_opts = {
                 'outtmpl': os.path.join(DOWNLOAD_FOLDER, '%(title)s.%(ext)s'),
-                # YouTube'un web bot korumasını aşmak için istemciyi mobil uygulama (Android) olarak taklit ediyoruz
-                'extractor_args': {
-                    'youtube': {
-                        'player_client': ['android'],
-                        'skip': ['webpage']
-                    }
-                },
+                'format': 'ba/b' if format_type == 'mp3' else 'best',
                 'http_headers': {
-                    'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
-                    'Accept': '*/*',
-                    'Accept-Language': 'en-US,en;q=0.9',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
                 },
             }
 
             if os.path.exists(cookies_path):
                 ydl_opts['cookiefile'] = cookies_path
-
-            if format_type == 'mp3':
-                ydl_opts['format'] = 'ba/b'
-            else:
-                ydl_opts['format'] = 'best'
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
@@ -66,5 +54,5 @@ def index():
 
     return render_template('index.html')
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# Vercel'in projeyi tanıması için bu satır kritik önem taşıyor
+handler = app
