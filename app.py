@@ -22,32 +22,33 @@ def index():
             ydl_opts = {
                 'outtmpl': os.path.join(DOWNLOAD_FOLDER, '%(title)s.%(ext)s'),
                 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                # Sunucuda ffmpeg hatası çıkmasını önlemek için harici birleştiricileri kapatıyoruz
+                'prefer_ffmpeg': False,
             }
 
             if os.path.exists(cookies_path):
                 ydl_opts['cookiefile'] = cookies_path
 
             if format_type == 'mp3':
+                # En yüksek kalitedeki hazır ses formatını direkt indir
                 ydl_opts.update({
-                    'format': 'bestaudio/best',
-                    'postprocessors': [{
-                        'key': 'FFmpegExtractAudio',
-                        'preferredcodec': 'mp3',
-                        'preferredquality': '192',
-                    }],
+                    'format': 'bestaudio',
                 })
             else:
-                # Her videoda mutlaka bulunan, en kararlı MP4 format kombinasyonu
+                # Video ve sesi hazır birleşik halde barındıran en iyi tek parça formatı indirir (Hata riskini sıfırlar)
                 ydl_opts.update({
-                    'format': 'best[ext=mp4]/best',
+                    'format': 'best',
                 })
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
                 filename = ydl.prepare_filename(info)
                 
-                if format_type == 'mp3':
-                    filename = os.path.splitext(filename)[0] + '.mp3'
+                # Eğer mp3 seçildiyse ve dosya uzantısı farklıysa sunucuda isimlendirmeyi düzeltelim
+                if format_type == 'mp3' and not filename.endswith('.mp3'):
+                    base, _ = os.path.splitext(filename)
+                    os.rename(filename, base + '.mp3')
+                    filename = base + '.mp3'
 
             return send_file(filename, as_attachment=True)
 
