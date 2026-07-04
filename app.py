@@ -21,30 +21,32 @@ def index():
             
             ydl_opts = {
                 'outtmpl': os.path.join(DOWNLOAD_FOLDER, '%(title)s.%(ext)s'),
-                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                # Sunucuda ffmpeg hatası çıkmasını önlemek için harici birleştiricileri kapatıyoruz
-                'prefer_ffmpeg': False,
+                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                # Sunucuda harici birleştirici (ffmpeg) çağrılmasını tamamen devre dışı bırakıyoruz
+                'extract_flat': False,
             }
 
             if os.path.exists(cookies_path):
                 ydl_opts['cookiefile'] = cookies_path
 
             if format_type == 'mp3':
-                # En yüksek kalitedeki hazır ses formatını direkt indir
+                # ffmpeg olmadan sunucunun dönüştürme yapması imkansız olduğundan, 
+                # doğrudan YouTube'un tek parça halinde hazır sunduğu en iyi ses dosyasını çekiyoruz.
                 ydl_opts.update({
                     'format': 'bestaudio',
                 })
             else:
-                # Video ve sesi hazır birleşik halde barındıran en iyi tek parça formatı indirir (Hata riskini sıfırlar)
+                # 'best' veya 'mp4' uzantılı, içinde hem ses hem görüntü barındıran 
+                # tek parça hazır ham formatı zorunlu kılıyoruz.
                 ydl_opts.update({
-                    'format': 'best',
+                    'format': 'best[ext=mp4]/best',
                 })
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
                 filename = ydl.prepare_filename(info)
                 
-                # Eğer mp3 seçildiyse ve dosya uzantısı farklıysa sunucuda isimlendirmeyi düzeltelim
+                # İndirilen dosya mp3 formatı seçildiyse uzantıyı sunucu tarafında yeniden adlandırıyoruz
                 if format_type == 'mp3' and not filename.endswith('.mp3'):
                     base, _ = os.path.splitext(filename)
                     os.rename(filename, base + '.mp3')
