@@ -21,12 +21,17 @@ def index():
             
             ydl_opts = {
                 'outtmpl': os.path.join(DOWNLOAD_FOLDER, '%(title)s.%(ext)s'),
-                # Sunucu IP engellemesini aşmak için halka açık proxy tüneli ekliyoruz
-                'proxy': 'http://inv.tux.digital', 
+                # YouTube'un web bot korumasını aşmak için istemciyi mobil uygulama (Android) olarak taklit ediyoruz
+                'extractor_args': {
+                    'youtube': {
+                        'player_client': ['android'],
+                        'skip': ['webpage']
+                    }
+                },
                 'http_headers': {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.5',
+                    'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+                    'Accept': '*/*',
+                    'Accept-Language': 'en-US,en;q=0.9',
                 },
             }
 
@@ -34,10 +39,8 @@ def index():
                 ydl_opts['cookiefile'] = cookies_path
 
             if format_type == 'mp3':
-                # Ekstra işlem gerektirmeyen ham ses formatı
-                ydl_opts['format'] = 'bestaudio/best'
+                ydl_opts['format'] = 'ba/b'
             else:
-                # ffmpeg gerektirmeyen tek parça hazır birleşik video formatı
                 ydl_opts['format'] = 'best'
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -46,7 +49,7 @@ def index():
                 
                 if not os.path.exists(filename):
                     base, _ = os.path.splitext(filename)
-                    for ext in ['.mp4', '.m4a', '.webm', '.3gp']:
+                    for ext in ['.mp4', '.m4a', '.webm', '.3gp', '.mkv']:
                         if os.path.exists(base + ext):
                             filename = base + ext
                             break
