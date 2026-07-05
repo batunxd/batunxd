@@ -1,12 +1,14 @@
 from flask import Flask, render_template, request, send_file
 import yt_dlp
 import os
-import shutil
 
 app = Flask(__name__)
-app.secret_key = 'medyaindirici_gizli_anahtar'
+app.secret_key = 'medyaindirici_telefon_anahtari'
 
-DOWNLOAD_FOLDER = '/tmp' 
+# Termux içinde projenin çalıştığı klasörün altında 'downloads' adında bir klasör oluşturur
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DOWNLOAD_FOLDER = os.path.join(BASE_DIR, 'downloads')
+os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -18,40 +20,38 @@ def index():
             return "Lütfen bir link girin!", 400
 
         try:
-            # Vercel'in salt okunur hatasını aşmak için:
-            # Proje klasöründeki kilitli cookies.txt dosyasını, izinleri açık olan /tmp klasörüne kopyalıyoruz.
-            src_cookies = 'cookies.txt'
-            tmp_cookies = os.path.join(DOWNLOAD_FOLDER, 'cookies.txt')
-            
+            # Telefon sunucusunda artık ham indirme yapacağımız için karmaşık ayarlara gerek yok
             ydl_opts = {
                 'outtmpl': os.path.join(DOWNLOAD_FOLDER, '%(title)s.%(ext)s'),
-                'format': 'ba/b' if format_type == 'mp3' else 'best',
                 'http_headers': {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 },
             }
 
-            if os.path.exists(src_cookies):
-                # Dosyayı /tmp altına kopyala (Zorunlu izin bypass yöntemi)
-                shutil.copy2(src_cookies, tmp_cookies)
-                ydl_opts['cookiefile'] = tmp_cookies
+            # Telefonuna kuracağımız ffmpeg sayesinde ses ve videoları kusursuz işleyebiliriz
+            if format_type == 'mp3':
+                ydl_opts.update({
+                    'format': 'bestaudio/best',
+                    'postprocessors': [{
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'mp3',
+                        'preferredquality': '192',
+                    }],
+                })
+            else:
+                # Video ve sesi en yüksek kalitede ayrı indirip arka planda otomatik birleştirir
+                ydl_opts['format'] = 'bestvideo+bestaudio/best'
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
                 filename = ydl.prepare_filename(info)
                 
-                if not os.path.exists(filename):
-                    base, _ = os.path.splitext(filename)
-                    for ext in ['.mp4', '.m4a', '.webm', '.3gp', '.mkv']:
-                        if os.path.exists(base + ext):
-                            filename = base + ext
-                            break
-
+                # Eğer mp3 dönüşümünden sonra uzantı güncellenmediyse koddaki ismini düzeltelim
                 if format_type == 'mp3' and not filename.endswith('.mp3'):
-                    new_filename = os.path.splitext(filename)[0] + '.mp3'
-                    os.rename(filename, new_filename)
-                    filename = new_filename
+                    base, _ = os.path.splitext(filename)
+                    filename = base + '.mp3'
 
+            # İndirilen dosyayı kullanıcının tarayıcısına gönderiyoruz
             return send_file(filename, as_attachment=True)
 
         except Exception as e:
@@ -59,4 +59,7 @@ def index():
 
     return render_template('index.html')
 
-handler = app
+if __name__ == '__main__':
+    # Termux yerel ağda çalışacağı için host'u 0.0.0.0 yapıyoruz ki ağdaki diğer cihazlar da görebilsin
+    app.run(host='0.0.0.0', port=5000, debug=True)
+    
